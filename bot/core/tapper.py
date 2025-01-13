@@ -586,7 +586,7 @@ class Tapper:
                         cost_star = hero['costStar']
 
                         # Проверяем, достаточно ли карточек для улучшения звезд
-                        if hero_type in hero_card_dict and hero_card_dict[hero_type] >= cost_star:
+                        if hero_type in hero_card_dict and hero_card_dict[hero_type] >= cost_star and hero['unlockAt'] == 0:
                             result = await self.star_up_hero(http_client, query, hero_type)
                             if result['status'] == 'success':
                                 logger.success(f"Успешно улучшен <green> {hero_type}</>")
@@ -634,20 +634,14 @@ class Tapper:
                                                                      hero_type=hero['heroType'])
 
                                 if hero_lvl_up and hero_lvl_up.get('status') == 'success':
-                                    heroes_from_response = hero_lvl_up.get('data', {}).get('player',
-                                                                                           {}).get('heroes',
-                                                                                                   [])
+                                    heroes_from_response = hero_lvl_up.get('data', {})
                                     if not heroes_from_response:
                                         logger.error(
                                             f"<red>Ответ API не содержит список героев: {hero_lvl_up}</>")
                                         break
 
                                     # Получаем новый уровень героя
-                                    new_level = next(
-                                        (h['level'] for h in heroes_from_response if
-                                         h.get('heroType') == hero['heroType']),
-                                        None
-                                    )
+                                    new_level = hero_lvl_up['data']['level']
 
                                     if new_level is not None:
                                         hero['level'] = new_level
