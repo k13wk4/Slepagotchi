@@ -351,6 +351,7 @@ class Tapper:
         url = str(f"{level_up_hero}{query}")
         for _ in range(3):
             try:
+                await asyncio.sleep(random.uniform(1, 3))
                 logger.info(f"Отправляем запрос на повышение уровня героя <green> {hero_type}</green>")
                 response = await http_client.post(url, json={"heroType": hero_type})
                 response.raise_for_status()
