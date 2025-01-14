@@ -615,7 +615,7 @@ class Tapper:
                                 hero['unlockAt'] == 0
                         ) or (
                                 hero['stars'] >= min_stars and
-                                hero['rarity'] in [1, 2] and
+                                hero['rarity'] in [1, 2, 3] and
                                 hero['costLevelGold'] <= resources.get('gold', {}).get('amount', 0) and
                                 hero['costLevelGreen'] <= resources.get('greenStones', {}).get('amount',
                                                                                                0) and
