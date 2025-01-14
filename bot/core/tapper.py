@@ -623,7 +623,7 @@ class Tapper:
                         ) or (
                                 hero['stars'] >= min_stars and
                                 hero['rarity'] == 0 and
-                                hero['level'] >= min_level and
+                                hero['level'] >= min_level - 1 and
                                 hero['costLevelGold'] <= resources.get('gold', {}).get('amount', 0) and
                                 hero['costLevelGreen'] <= resources.get('greenStones', {}).get('amount',
                                                                                                0) and
