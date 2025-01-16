@@ -354,7 +354,7 @@ class Tapper:
             try:
                 await asyncio.sleep(random.uniform(1, 3))
                 logger.info(f"Отправляем запрос на повышение уровня героя <green> {hero_type}</green>")
-                response = await http_client.post(url, json={"heroType": hero_type,"strategy" :"one"})
+                response = await http_client.post(url, json={"heroType": hero_type,"strategy":"one"})
                 response.raise_for_status()
                 data = await response.json()
                 return {"status": "success", "data": data}
