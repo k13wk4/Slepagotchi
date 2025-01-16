@@ -34,6 +34,7 @@ get_shop = f"{url_end_point}/getShop?"
 buy_shop = f"{url_end_point}/buyShop?"
 get_constellations = f"{url_end_point}/getConstellations?"
 send_to_challenge = f"{url_end_point}/sendToChallenge?"
+send_to_clan_challenge = f"{url_end_point}/sendToClanChallenge?"
 level_up_hero = f"{url_end_point}/levelUpHero?"
 get_daily_rewards = f"{url_end_point}/getDailyRewards?"
 claim_daily_rewards = f"{url_end_point}/claimDailyRewards?"
@@ -353,7 +354,7 @@ class Tapper:
             try:
                 await asyncio.sleep(random.uniform(1, 3))
                 logger.info(f"Отправляем запрос на повышение уровня героя <green> {hero_type}</green>")
-                response = await http_client.post(url, json={"heroType": hero_type})
+                response = await http_client.post(url, json={"heroType": hero_type,"strategy" :"one"})
                 response.raise_for_status()
                 data = await response.json()
                 return {"status": "success", "data": data}
@@ -387,7 +388,25 @@ class Tapper:
                     logger.error(f"Unknown error during getting user info: <light-yellow>{error}</light-yellow>")
                     await asyncio.sleep(delay=random.randint(3, 5))
 
-    async def get_challenges_rewards(self, http_client: aiohttp.ClientSession, query):
+    async def get_clan(self, http_client: aiohttp.ClientSession, query, clan_id):
+        url = str(f"{get_clan}{query}")
+        for _ in range(3):
+            try:
+                response = await http_client.post(url, json={"clanId": clan_id})
+                response.raise_for_status()
+                data = await response.json()
+                return {"status": "success", "data": data}
+            except Exception as error:
+                if self.check_timeout_error(error) or self.check_error(error, "Service Unavailable"):
+                    logger.warning(
+                        f"Warning during getting clan info: <magenta>Sleepagotchi</magenta> server is not response.")
+                    await asyncio.sleep(delay=random.randint(3, 5))
+                    continue
+                else:
+                    logger.error(f"Unknown error during getting clan info: <light-yellow>{error}</light-yellow>")
+                    await asyncio.sleep(delay=random.randint(3, 5))
+
+    async def claim_challenges_rewards(self, http_client: aiohttp.ClientSession, query):
         url = str(f"{claim_challenges_rewards}{query}")
         for _ in range(3):
             try:
@@ -435,9 +454,38 @@ class Tapper:
                     await asyncio.sleep(delay=random.randint(3, 5))
                     return None
             except Exception as error:
-                logger.error(f"Unknown error during getting user info: <light-yellow>{error}</light-yellow>")
+                logger.error(f"Unknown error during getting send to challenge: <light-yellow>{error}</light-yellow>")
                 await asyncio.sleep(delay=random.randint(3, 5))
                 return None
+
+    async def send_to_clan_challenge(self, http_client: aiohttp.ClientSession, query, challenge_type):
+        url = str(f"{send_to_clan_challenge}{query}")
+        payload = {
+            "challengeType": challenge_type,
+            "heroes":[{"slotId":0,"heroType":"bonk"}]}
+        for _ in range(3):
+            try:
+                response = await http_client.post(url, json=payload)
+                response.raise_for_status()
+                data = await response.json()
+                await asyncio.sleep(delay=random.randint(3, 5))
+                return {"status": "success", "data": data}
+            except aiohttp.ClientResponseError as e:
+                if self.check_timeout_error(e) or self.check_error(e, "Service Unavailable"):
+                    logger.warning(
+                        f"Warning during getting user info: <magenta>Sleepagotchi</magenta> server is not responding.")
+                    await asyncio.sleep(delay=random.randint(3, 5))
+                    continue
+                else:
+                    logger.error(f"Client response error during sending hero <light-yellow>{e}</light-yellow>")
+                    logger.error(f"Response status: {e.status} - Response message: {e.message}")
+                    await asyncio.sleep(delay=random.randint(3, 5))
+                    return None
+            except Exception as error:
+                logger.error(f"Unknown error during getting send to challenge: <light-yellow>{error}</light-yellow>")
+                await asyncio.sleep(delay=random.randint(3, 5))
+                return None
+
 
     async def run(self) -> None:
         if settings.USE_RANDOM_DELAY_IN_RUN:
@@ -505,11 +553,13 @@ class Tapper:
                     self.user = user
                     user_name = user['initData']['first_name']
                     logger.info(f"<green>Пользователь:</green> <cyan>{user_name}</cyan>")
-                    challenges_rewards = await self.get_challenges_rewards(http_client, query)
+                    challenges_rewards = await self.claim_challenges_rewards(http_client, query)
                     if challenges_rewards["status"] == "success":
                         logger.success(f"Награда за испытания успешно получена")
                     self.player = user.get('player', {})
                     meta = self.player.get('meta', {})
+                    clan = self.player.get('clanInfo', {})
+                    clan_id = clan.get('clanId')
                     resources = self.player.get('resources', {})
                     hero_cards = resources.get('heroCard', [])
                     hero_card_dict = {card['heroType']: card['amount'] for card in hero_cards}
@@ -590,10 +640,10 @@ class Tapper:
                         if hero_type in hero_card_dict and hero_card_dict[hero_type] >= cost_star and hero['unlockAt'] == 0:
                             result = await self.star_up_hero(http_client, query, hero_type)
                             if result['status'] == 'success':
-                                logger.success(f"Успешно улучшен <green> {hero_type}</>")
+                                logger.success(f"Успешно повышены звёзды для <green> {hero_type}</>")
                             else:
                                 logger.error(
-                                    f"<red>Не удалось улучшить {hero_type}. Ошибка: {result.get('error', 'Неизвестная ошибка')}</>")
+                                    f"<red>Не удалось повысить звёзды для {hero_type}. Ошибка: {result.get('error', 'Неизвестная ошибка')}</>")
                     # Получить минимальное количество звезд и минимальный уровень
                     get_constel = await self.get_constellations(http_client, query,
                                                                 start_index=constellations_last_index,
@@ -666,6 +716,56 @@ class Tapper:
 
                                 await asyncio.sleep(delay=random.randint(2, 5))
 
+                    # Получение информации о клане
+                    await asyncio.sleep(delay=random.randint(2, 5))
+                    clan_info = await self.get_clan(http_client, query, clan_id)
+                    if clan_info.get("status") != "success":
+                        logger.warning(f"❌ Не удалось получить данные для <red> Клана </red>. Пропускаем.")
+                    else:
+                        for hero in self.player.get('heroes', []):
+                            if hero["unlockAt"] > int(time() * 1000) and hero['heroType'] == 'bonk' :
+                                unlock_time = datetime.fromtimestamp(hero['unlockAt'] / 1000,
+                                                                     tz=pytz.utc).astimezone(wib)
+                                time_difference = unlock_time - current_time
+                                formatted_time = format_duration(time_difference.total_seconds())
+                                logger.warning(
+                                    f"⏳ Герой '<yellow>{hero['name']}</>' ещё не разблокирован. "
+                                    f"Разблокируется через <blue>{formatted_time}</blue>")
+                            elif hero["unlockAt"] < int(time() * 1000) and hero['heroType'] == 'bonk' :
+                                for constellation in clan_info.get("data", {}).get("constellations", []):
+                                    challenges = constellation.get("challenges", [])
+                                    logger.info(
+                                        f"🧩 Найдено {len(challenges)} клановых испытаний в созвездии '{constellation.get('name')}'.")
+
+                                    for challenge in challenges:
+                                        challenge_name = challenge.get("name")
+
+                                        if challenge["received"] < challenge["value"]:
+                                            logger.info(
+                                                f"⚠️ Клановое Испытание '<yellow>{challenge_name}</yellow>' не завершено. "
+                                                f"Получено: <red>{challenge['received']}</red>, Необходимо: <green>{challenge['value']}</green>")
+
+                                            if challenge["unlockAt"] > int(time() * 1000):
+                                                unlock_time = datetime.fromtimestamp(challenge['unlockAt'] / 1000,
+                                                                                     tz=pytz.utc).astimezone(wib)
+                                                time_difference = unlock_time - current_time
+                                                formatted_time = format_duration(time_difference.total_seconds())
+                                                logger.warning(
+                                                    f"⏳ Испытание '<yellow>{challenge_name}</yellow>' ещё не разблокировано. "
+                                                    f"Разблокируется через <blue>{formatted_time}</blue>")
+                                            else:
+                                                sending = await self.send_to_clan_challenge(http_client, query,
+                                                                                            challenge["challengeType"])
+
+                                                if sending and sending["status"] == "success":
+                                                    logger.success(
+                                                        f"✅ Герой <cyan>Bonk</cyan> успешно отправлен на клановое испытание<green> '{challenge_name}'</green>.")
+                                                    self.player = sending.get('data', {}).get('player', {})
+                                                    return  # Завершаем метод после успешной отправки героя
+                                                else:
+                                                    logger.warning(
+                                                        f"❌ Ошибка при отправке героя на клановое испытание '{challenge_name}'.")
+
                     # Получаем стартовый индекс для конкретного аккаунта (из файла или через поиск)
                     start_index = self.load_min_index()  # Передаем self.session_name
                     logger.info(
@@ -691,6 +791,7 @@ class Tapper:
                         suitable_heroes = [
                             hero for hero in self.player.get("heroes", [])
                             if hero["unlockAt"] == 0 and
+                               hero["heroType"] != "bonk" and
                                hero["level"] >= constellations["data"]['constellations'][0]['challenges'][0][
                                    'minLevel'] and
                                hero["stars"] >= constellations["data"]['constellations'][0]['challenges'][0]['minStars']
