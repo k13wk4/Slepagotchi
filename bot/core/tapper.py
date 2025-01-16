@@ -691,7 +691,7 @@ class Tapper:
                                         break
 
                                     # Получаем новый уровень героя
-                                    new_level =  hero_lvl_up.get('data', {}).get('hero', {}).get('level', {})
+                                    new_level =  hero_lvl_up.get('data', {}).get('hero', {}).get('level')
 
                                     if new_level is not None:
                                         hero['level'] = new_level
