@@ -761,7 +761,7 @@ class Tapper:
                                                     logger.success(
                                                         f"✅ Герой <cyan>Bonk</cyan> успешно отправлен на клановое испытание<green> '{challenge_name}'</green>.")
                                                     self.player = sending.get('data', {}).get('player', {})
-                                                    return  # Завершаем метод после успешной отправки героя
+                                                    break  # Завершаем метод после успешной отправки героя
                                                 else:
                                                     logger.warning(
                                                         f"❌ Ошибка при отправке героя на клановое испытание '{challenge_name}'.")
