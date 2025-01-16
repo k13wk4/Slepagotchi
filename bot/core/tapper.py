@@ -434,7 +434,6 @@ class Tapper:
                 for hero in heroes
             ]
         }
-        print(payload)
         for _ in range(3):
             try:
                 response = await http_client.post(url, json=payload)
