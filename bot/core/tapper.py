@@ -739,7 +739,7 @@ class Tapper:
                                     for challenge in challenges:
                                         challenge_name = challenge.get("name")
 
-                                        if challenge["received"] < challenge["value"]:
+                                        if challenge["received"] + 100 < challenge["value"]:
                                             logger.info(
                                                 f"⚠️ Клановое Испытание '<yellow>{challenge_name}</yellow>' не завершено. "
                                                 f"Получено: <red>{challenge['received']}</red>, Необходимо: <green>{challenge['value']}</green>")
