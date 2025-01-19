@@ -63,7 +63,6 @@ class Tapper:
         self.game_service_is_unavailable = False
         self.already_joined_squad_channel = None
         self.user = None
-        self.updated_pixels = {}
         self.socket = None
         self.socket_task = None
         self.current_user_balance = 0
@@ -72,6 +71,7 @@ class Tapper:
         self.chat_instance = None
         self.user_info = None
         self.status = None
+        self.current_gold = 0
 
     @staticmethod
     def check_timeout_error(error):
@@ -563,6 +563,7 @@ class Tapper:
                     hero_cards = resources.get('heroCard', [])
                     hero_card_dict = {card['heroType']: card['amount'] for card in hero_cards}
                     constellations_last_index = meta.get('constellationsLastIndex', 0)
+                    self.current_gold = resources.get('gold', {}).get('amount', 0)
 
                     logger.info(f"<yellow>Ресурсы:</yellow>")
                     resource_display = {
@@ -656,7 +657,7 @@ class Tapper:
                     # Проверить каждого героя и вызвать функцию повышения уровня
                     for hero in self.player.get('heroes', []):
                         # Условие для улучшения героя
-                        if (
+                        if ((
                                 hero['stars'] >= min_stars + 1 and
                                 hero['rarity'] == 0 and
                                 hero['costLevelGold'] <= resources.get('gold', {}).get('amount', 0) and
@@ -671,6 +672,14 @@ class Tapper:
                                                                                                0) and
                                 hero['unlockAt'] == 0
                         ) or (
+                                hero['stars'] >= 15 and
+                                hero['rarity'] in [2, 3] and
+                                hero['costLevelGold'] <= resources.get('gold', {}).get('amount', 0) and
+                                resources.get('gold', {}).get('amount', 0) >= 50000 and
+                                hero['costLevelGreen'] <= resources.get('greenStones', {}).get('amount',
+                                                                                               0) and
+                                hero['unlockAt'] == 0
+                        ) or (
                                 hero['stars'] >= min_stars and
                                 hero['rarity'] == 0 and
                                 hero['level'] >= min_level - 1 and
@@ -678,8 +687,14 @@ class Tapper:
                                 hero['costLevelGreen'] <= resources.get('greenStones', {}).get('amount',
                                                                                                0) and
                                 hero['unlockAt'] == 0
-                        ):
-                            while hero['level'] < min_level:
+                        )):
+                            while (
+                                    hero['level'] < min_level or
+                                    (
+                                            hero['stars'] >= 15 and
+                                            hero['rarity'] in [2, 3]
+                                    )
+                            ):
                                 hero_lvl_up = await self.lvl_up_hero(http_client, query,
                                                                      hero_type=hero['heroType'])
 
@@ -692,13 +707,22 @@ class Tapper:
 
                                     # Получаем новый уровень героя
                                     new_level =  hero_lvl_up.get('data', {}).get('hero', {}).get('level')
+                                    spent_gold = hero_lvl_up.get('data', {}).get('spentGold')
+                                    self.current_gold = self.current_gold - spent_gold
+                                    logger.info(f"Текущее золото: {self.current_gold}")
 
                                     if new_level is not None:
                                         hero['level'] = new_level
                                         logger.success(
                                             f"Успешно улучшен <green> {hero['heroType']} до Уровня {new_level}</>"
                                         )
-                                        if new_level >= min_level:
+                                        if (
+                                            hero['stars'] >= 15 and
+                                            hero['rarity'] in [2, 3] and
+                                            self.current_gold <= 50000
+                                        ):
+                                            break
+                                        elif  new_level >= min_level:
                                             break
                                     else:
                                         logger.error(
@@ -846,6 +870,8 @@ class Tapper:
                                         # Устанавливаем множитель для испытания с resourceType == "points"
                                         if challenge.get("resourceType") == "points":
                                             multiplier = 9
+                                        elif challenge.get("resourceType") == "gacha":
+                                            multiplier = 1
                                         else:
                                             # В остальных случаях динамически вычисляем множитель
                                             multiplier = max(1, len(suitable_heroes) // len(suitable_challenges) if len(
