@@ -672,14 +672,6 @@ class Tapper:
                                                                                                0) and
                                 hero['unlockAt'] == 0
                         ) or (
-                                hero['stars'] >= 15 and
-                                hero['rarity'] in [2, 3] and
-                                hero['costLevelGold'] <= resources.get('gold', {}).get('amount', 0) and
-                                resources.get('gold', {}).get('amount', 0) >= 50000 and
-                                hero['costLevelGreen'] <= resources.get('greenStones', {}).get('amount',
-                                                                                               0) and
-                                hero['unlockAt'] == 0
-                        ) or (
                                 hero['stars'] >= min_stars and
                                 hero['rarity'] == 0 and
                                 hero['level'] >= min_level - 1 and
@@ -689,11 +681,7 @@ class Tapper:
                                 hero['unlockAt'] == 0
                         )):
                             while (
-                                    hero['level'] < min_level or
-                                    (
-                                            hero['stars'] >= 15 and
-                                            hero['rarity'] in [2, 3]
-                                    )
+                                    hero['level'] < min_level
                             ):
                                 hero_lvl_up = await self.lvl_up_hero(http_client, query,
                                                                      hero_type=hero['heroType'])
@@ -716,13 +704,7 @@ class Tapper:
                                         logger.success(
                                             f"Успешно улучшен <green> {hero['heroType']} до Уровня {new_level}</>"
                                         )
-                                        if (
-                                            hero['stars'] >= 15 and
-                                            hero['rarity'] in [2, 3] and
-                                            self.current_gold <= 50000
-                                        ):
-                                            break
-                                        elif  new_level >= min_level:
+                                        if new_level >= min_level:
                                             break
                                     else:
                                         logger.error(
@@ -763,7 +745,7 @@ class Tapper:
                                     for challenge in challenges:
                                         challenge_name = challenge.get("name")
 
-                                        if challenge["received"] + 100 < challenge["value"]:
+                                        if challenge["received"] < challenge["value"] * 0.9 :
                                             logger.info(
                                                 f"⚠️ Клановое Испытание '<yellow>{challenge_name}</yellow>' не завершено. "
                                                 f"Получено: <red>{challenge['received']}</red>, Необходимо: <green>{challenge['value']}</green>")
